@@ -7,16 +7,16 @@ test_that("ppgm works with original paleoclimate", {
   load(test_path("testdata","testclim.rda"))
   bounds <- list(a = c(min = -1, max = 5), delta = c(min = 0, max = 1000))
   #test models
-  tBM  <- ppgm(testocc, trees=testtree, model="BM", which.biovars=1, use.paleoclimate=F, paleoclimateUser=testclim)
-  tOU  <- ppgm(testocc, trees=testtree, model="OU", which.biovars=1, use.paleoclimate=F, paleoclimateUser=testclim)
-  tEB  <- ppgm(testocc, trees=testtree, model="EB", which.biovars=1, use.paleoclimate=F, paleoclimateUser=testclim)
-  tLa  <- ppgm(testocc, trees=testtree, model="lambda", which.biovars=1, use.paleoclimate=F, paleoclimateUser=testclim, plot.GeoRates = TRUE)
-  tKa  <- ppgm(testocc, trees=testtree, model="kappa", which.biovars=1, use.paleoclimate=F, paleoclimateUser=testclim, plot.TraitGram = TRUE)
-  tDe  <- ppgm(testocc, trees=testtree, model="delta", which.biovars=1, use.paleoclimate=F, paleoclimateUser=testclim, verbose=FALSE)
+  tBM  <- ppgm(testocc, trees=testtree, model="BM", which.biovars=1, use.paleoclimate=F, paleoclimateUser=testclim, ncores=2)
+  tOU  <- ppgm(testocc, trees=testtree, model="OU", which.biovars=1, use.paleoclimate=F, paleoclimateUser=testclim, ncores=2)
+  tEB  <- ppgm(testocc, trees=testtree, model="EB", which.biovars=1, use.paleoclimate=F, paleoclimateUser=testclim, ncores=2)
+  tLa  <- ppgm(testocc, trees=testtree, model="lambda", which.biovars=1, use.paleoclimate=F, paleoclimateUser=testclim, plot.GeoRates = TRUE, ncores=2)
+  tKa  <- ppgm(testocc, trees=testtree, model="kappa", which.biovars=1, use.paleoclimate=F, paleoclimateUser=testclim, plot.TraitGram = TRUE, ncores=2)
+  tDe  <- ppgm(testocc, trees=testtree, model="delta", which.biovars=1, use.paleoclimate=F, paleoclimateUser=testclim, verbose=FALSE, ncores=2)
   #test est
-  tEs <- ppgm(testocc, trees=testtree, model="estimate", which.biovars=1, use.paleoclimate=F, paleoclimateUser=testclim, bounds=bounds)
+  tEs <- ppgm(testocc, trees=testtree, model="estimate", which.biovars=1, use.paleoclimate=F, paleoclimateUser=testclim, bounds=bounds, ncores=2)
   #test fossil
-  tfos <- ppgm(testocc, trees=testtree, fossils=testfos, which.biovars=1, use.paleoclimate=F, paleoclimateUser=testclim)
+  tfos <- ppgm(testocc, trees=testtree, fossils=testfos, which.biovars=1, use.paleoclimate=F, paleoclimateUser=testclim, ncores=2)
   #checking outputs
   expect_equal(length(tBM$node_est),length(testtree))
   expect_equal(length(tfos$node_est),length(testtree))
@@ -35,9 +35,9 @@ test_that("ppgm works with new paleoclimate", {
   layerAge <- c(1,4,10)
   bounds <- list(a = c(min = -1, max = 5), delta = c(min = 0, max = 1000))
   #test BM
-  tBM  <- ppgm(testocc, trees=testtree, model="BM" ,which.biovars=1, use.paleoclimate=F, paleoclimateUser=newclim, layerAge=layerAge)
+  tBM  <- ppgm(testocc, trees=testtree, model="BM" ,which.biovars=1, use.paleoclimate=F, paleoclimateUser=newclim, layerAge=layerAge, ncores=2)
   #test fossil
-  tfos <- ppgm(testocc, trees=testtree, fossils=testfos, which.biovars=1, use.paleoclimate=F, paleoclimateUser=newclim, layerAge=layerAge)
+  tfos <- ppgm(testocc, trees=testtree, fossils=testfos, which.biovars=1, use.paleoclimate=F, paleoclimateUser=newclim, layerAge=layerAge, ncores=2)
   #checking outputs
   expect_equal(length(tBM$node_est),length(testtree))
   expect_equal(length(tfos$node_est),length(testtree))

@@ -1,16 +1,17 @@
 #' @title ppgm
 #' @description ppgm makes a paleophylogeographic species distribution model using the bioclimate envelope method for a specified time period. Currently, models are only available for North America.
 #' @usage ppgm(occurrences, fossils = FALSE, trees, fossils.edges = FALSE, 
-#' model = "BM", permut = 1, only.biovars = TRUE, which.biovars = c(1:19), 
-#' path = "", plot.TraitGram = FALSE, plot.AnimatedMaps = FALSE, 
-#' plot.GeoRates = FALSE, bounds = list(), control = list(), 
-#' use.paleoclimate = TRUE, paleoclimateUser = NULL, layerAge=c(0:20), 
-#' verbose = TRUE)
+#' model = "BM", ncores = NULL, permut = 1, only.biovars = TRUE, 
+#' which.biovars = c(1:19), path = "", plot.TraitGram = FALSE, 
+#' plot.AnimatedMaps = FALSE, plot.GeoRates = FALSE, bounds = list(), 
+#' control = list(), use.paleoclimate = TRUE, paleoclimateUser = NULL, 
+#' layerAge=c(0:20), verbose = TRUE)
 #' @param occurrences a matrix with three columns of species name, longitude, and latitude, in that order, and rows that are entries for species occurrences. The bioclimate variables can be included for each occurrence in following columns. They must be in order 1 through 19.
 #' @param fossils a matrix with four columns of min age, max age, longitude, and latitude, in that order, and rows that are entries for fossil occurrences. The bioclimate variables can be included for each occurrence in following columns. They must be in order 1 through 19. All 19 variables must be included at this stage, variable selection is done with the argument: "which.biovars".
 #' @param trees phylogenies of species from first column of occurrences argument. Object of class multiphylo.
 #' @param fossils.edges a vector of edges that the fossils belong to. Must be in the same order of the fossils argument. If fossils.edges is false, the the function randomly assigns the location of the fossils depending on the age (see details for more information).
 #' @param model the model of evolution to use to estimate ancestor nodes. Argument is passed onto to function nodeEstimate.
+#' @param ncores number of cores to run parallel processing on. If left blank, will default to system cores - 1 
 #' @param permut the number of times to randomly place fossils in phylogeny and estimate ancestor states.
 #' @param only.biovars logical. If FALSE, user must include biovariables in occurrence object.
 #' @param which.biovars a vector with the biovars to include in model (see www.worldclim.org for a list of biovars). If "ALL", then all 19 biovars are included in analysis.
@@ -18,7 +19,7 @@
 #' @param plot.TraitGram logical. Whether to plot a TraitGram
 #' @param plot.AnimatedMaps logical. Whether to plot AnimatedMaps. Requires ImageMagick to be installed on the system.
 #' @param plot.GeoRates logical. Whether to plot GeoRates
-#' @param bounds parameters for the evolutionary model selected. If none are supplied the default is used
+#' @param bounds list of parameters for the evolutionary model selected. If none are supplied the default is used. If multiple biovars are selected, must include separate bounds for each variable.
 #' @param control settings used for optimisation of model likelihood. Passes to \code{geiger::fitContinuous}
 #' @param use.paleoclimate if left blank, default North America paleoclimate data is used. If FALSE, user submitted paleoclimate must be provided
 #' @param paleoclimateUser list of data frames with paleoclimates, must be dataframes with columns: GlobalID, Longitude, Latitude, bio1, bio2,...,bio19.
@@ -42,6 +43,10 @@
 #' @importFrom ape is.binary
 #' @importFrom ape multi2di
 #' @importFrom geiger treedata
+#' @importFrom parallel detectCores
+#' @importFrom foreach foreach
+#' @importFrom foreach %dopar%
+#' @importFrom parallel clusterExport
 #' @export
 #' @examples
 #' data(sampletrees)
@@ -49,9 +54,9 @@
 #' bounds <- list(sigsq = c(min = 0, max = 1000000))
 #' \donttest{test_ppgm <- ppgm(occurrences = occurrences,trees = sampletrees, 
 #' model = "BM", which.biovars = c(1), bounds = bounds, 
-#' control = list(niter = 20))}
+#' control = list(niter = 20), ncores=2)}
 
-ppgm <- function(occurrences, fossils = FALSE, trees, fossils.edges = FALSE, model = "BM", permut = 1, only.biovars = TRUE,
+ppgm <- function(occurrences, fossils = FALSE, trees, fossils.edges = FALSE, model = "BM", ncores = NULL, permut = 1, only.biovars = TRUE,
                 which.biovars = c(1:19), path = "", plot.TraitGram = FALSE, plot.AnimatedMaps = FALSE, plot.GeoRates = FALSE,
                 bounds = list(), control = list(), use.paleoclimate = TRUE, paleoclimateUser = NULL, layerAge = c(0:20), verbose = TRUE){
   if(is(trees,"phylo")){
@@ -95,29 +100,45 @@ ppgm <- function(occurrences, fossils = FALSE, trees, fossils.edges = FALSE, mod
   sp_data_max<-sapply(4:(length(which.biovars)+3),function(x) tapply(occurrences[,x],occurrences$Species,max))
   colnames(sp_data_mean)<-which.biovars
   for(tr in 1:length(trees)){
-    #Check if phylogeny is dichotomous, if not, make it dichotomous
-    if(length(trees)==1){if(!ape::is.binary(trees[[tr]])){trees[[tr]]<-ape::multi2di(trees[[tr]])}}
-    #make treedata object for bioclimate envelopes and phylogeny
     treedata_min[[tr]]<-geiger::treedata(trees[[tr]],sp_data_min,sort=TRUE,warnings=F)  #matches species in tree with species in data
     treedata_max[[tr]]<-geiger::treedata(trees[[tr]],sp_data_max,sort=TRUE,warnings=F)
     colnames(treedata_min[[tr]]$data)<-colnames(treedata_max[[tr]]$data)<-paste("bio",which.biovars,sep="")  #labels biovars
-    #to estimate nodes, place fossils randomly or as specified on edges from fossils.edges argument
-    full_est <- list()
-    for(pr in 1:permut){
-      full_est[[pr]] <- nodeEstimateEnvelopes(treedata_min=treedata_min[[tr]], treedata_max=treedata_max[[tr]], fossils=fossils, fossils.edges=fossils.edges, model=model, bounds=bounds, control=control, which.biovars=which.biovars, paleoclimateUser=paleoclimateUser, use.paleoclimate=use.paleoclimate, layerAge=layerAge)
-    }
-    #####################
-    node_est[[tr]]<-lapply(1:permut, function(p) full_est[[p]]$est)
-    model_min[[tr]]<-lapply(1:permut, function(p) full_est[[p]]$min_model)
-    model_max[[tr]]<-lapply(1:permut, function(p) full_est[[p]]$max_model)
-    #get bioclimate envelopes for species and nodes
-    envelope[[tr]]<-getEnvelopes(treedata_min[[tr]],treedata_max[[tr]],node_est[[tr]])
-    #get data from geo displacement
-    temp<-getGeoRate(envelope[[tr]],tree=trees[[tr]],which.biovars=which.biovars,use.paleoclimate = use.paleoclimate, paleoclimateUser = paleoclimateUser, layerAge = layerAge)
-    geo_center[tr,,,]<-temp$geo_center
-    geo_size[tr,,,]<-temp$geo_size
   }
-  time_int<-temp$time_int
+  #set up for parallelisation
+  if (is.null(ncores)){ncores <- parallel::detectCores()}
+  cl <- parallel::makeCluster(ncores-1)
+  doParallel::registerDoParallel(cl)
+  parallel::clusterExport(varlist=c("treedata_min","treedata_max","fossils","fossils.edges","model","bounds","control",
+                          "which.biovars","paleoclimateUser","use.paleoclimate","layerAge","permut"),cl=cl,envir=environment())
+  #trait loop
+  full_est <- foreach::foreach(tr=1:length(trees),.packages=c("geiger","ape","ppgm","stringi","phytools")) %dopar% {
+    full_est <- list()
+    for(pr in 1:permut) {full_est[[pr]] <- nodeEstimateEnvelopes(treedata_min=treedata_min[[tr]], treedata_max=treedata_max[[tr]], fossils=fossils, fossils.edges=fossils.edges, model=model, bounds=bounds, control=control, which.biovars=which.biovars, paleoclimateUser=paleoclimateUser, use.paleoclimate=use.paleoclimate, layerAge=layerAge)
+    }
+    return(full_est)
+  }
+  #####################
+  for(tr in 1:length(trees)){ 
+    node_est[[tr]]<-lapply(1:permut, function(p) full_est[[p]][[1]]$est)
+    model_min[[tr]]<-lapply(1:permut, function(p) full_est[[p]][[1]]$min_model)
+    model_max[[tr]]<-lapply(1:permut, function(p) full_est[[p]][[1]]$max_model)
+  }
+  #get bioclimate envelopes for species and nodes
+  clusterExport(varlist=c("treedata_min","treedata_max","node_est"),cl=cl,envir=environment())
+  envelope <- foreach::foreach(tr=1:length(trees),.packages=c("ape","ppgm","phytools")) %dopar% {
+      getEnvelopes(treedata_min[[tr]],treedata_max[[tr]],node_est[[tr]])
+  }
+  clusterExport(varlist=c("envelope","trees","which.biovars"),cl=cl,envir=environment())
+  temp <- foreach::foreach(tr=1:length(trees),.packages=c("ape","ppgm","phytools")) %dopar% {
+    getGeoRate(envelope[[tr]],tree=trees[[tr]],which.biovars=which.biovars, use.paleoclimate=use.paleoclimate, paleoclimateUser=paleoclimateUser,layerAge=layerAge)
+  }
+  #get data from geo displacement
+  for(tr in 1:length(trees)){  
+    geo_center[tr,,,]<-temp[[tr]]$geo_center
+    geo_size[tr,,,]<-temp[[tr]]$geo_size
+    time_int<-temp[[tr]]$time_int
+  }
+  parallel::stopCluster(cl)
   #plot permutations
   if(plot.TraitGram){
     plotTraitGramMultiPhylo(treedata_min, treedata_max, node_est, fossils=fossils, which.biovars=which.biovars, path=path, paleoclimateUser=paleoclimateUser, use.paleoclimate=use.paleoclimate, layerAge=layerAge)

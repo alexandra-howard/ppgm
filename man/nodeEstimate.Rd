@@ -52,7 +52,7 @@ See the \code{fitContinuous()} details for descriptions of the models of evoluti
 \examples{
 data(sampletrees)
 data(occurrences)
-occurrences <- getBioclimVars(occurrences, which.biovars=1)
+occurrences <- getBioclimVars(occurrences, which.biovars=4)
 sp_data_min<- tapply(occurrences[,4],occurrences$Species,min)
 ex <- geiger::treedata(sampletrees[[1]], sp_data_min)
 \donttest{nodeEstimate(ex, 1, model = 'OU')} #runs OU model

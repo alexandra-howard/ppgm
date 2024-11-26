@@ -6,7 +6,7 @@ test_that("ppgmMESS works", {
   load(test_path("testdata","testfos.rda"))
   load(test_path("testdata","testclim.rda"))
   #test BM
-  tBM  <- ppgm(testocc, trees=testtree, model="BM", which.biovars=c(1,2), use.paleoclimate = FALSE, paleoclimateUser=testclim)
+  tBM  <- ppgm(testocc, trees=testtree, model="BM", which.biovars=c(1,2), use.paleoclimate = FALSE, paleoclimateUser=testclim, ncores=2)
   c_mi <- cbind(tBM$cem[,1],tBM$cem[,2])
   c_ma <- cbind(tBM$cem[,5],tBM$cem[,6])
   rownames(c_mi) <- rownames(c_ma) <- rownames(tBM$cem)

@@ -1,0 +1,133 @@
+---
+title: "How to use PPGM"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{How to use PPGM}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(ppgm)
+```
+
+PaleoPhyloGeographic Models (PPGM) are a useful way to incorporate paleontological data into analysis of climatic niche shifts in modern taxa.  
+
+Here we will walk you through the basic steps of the PPGM workflow, using the included data within the package.
+
+For instructions on how to find and clean data for the package, please see this [webpage](https://lawinglab.org/ppgm/).
+
+## Input Data
+
+### Extant Data
+We are using the *Sceloporus* data included in the package. This data was first collected for Lawing et al (2016).
+
+After loading the package, you can load the data using the `data` function
+
+```{r}
+data(occurrences)
+```
+
+This file contains *Sceloporus* occurrences for 53 species, Longitude and Latitude for each occurrence point, and all 19 bioclimatic variables for each of these points.
+
+Only the first 3 columns are required for PPGM to run, as there is code that extracts bioclimate variables from the first layer of paleoclimate data. If the bioclimatic variables are included in the input dataset, then the package will default to estimating climate envelopes using these variables, rather than the paleoclimate data.
+
+All 19 bioclimatic variables must be included if including any bioclimatic variables at this stage. If some variables are known, the columns may be left blank
+
+```{r}
+head(occurrences,n=3)
+```
+
+### Phylogenetic Trees
+
+PPGM requires dated phylogenetic trees. A sample of the Leache et al (20XX) dataset is included in the package. For the current analysis in the vignette we will use a subset of this dataset, in order to save computational time.
+
+These trees can be accessed using the `data` function.
+We will store 10 trees in the variable `vigtrees` for this analysis.
+
+```{r}
+data(sampletrees)
+vigtrees <- sample(sampletrees, size=10)
+```
+
+
+### Fossil Data
+
+We will also use the *Sceloporus* fossil dataset collected for Lawing et al (2016), representing a sampling of fossils from the literature. This dataset includes 45 *Sceloporus* fossils identified to the genus level.
+
+This dataset is included in the package, and can be accessed using:
+
+```{r}
+data("scel_fossils")
+head(scel_fossils)
+```
+
+This dataset includes minimum and maximum age for each fossil, with longitude and latitude for each point. 
+
+Fossil data is in the format of a table. It is important that the ages are in the first two columns, not the name of the species as with the modern occurrences.
+
+## Set Up Analysis
+
+### Bounds
+
+PPGM uses phylogenetic comparative techniques to estimate climatic envelopes through time. Setting appropriate bounds is an important step. When no bounds are included, `ppgm` will use the default bounds from the `fitContinuous` function, which is likely not appropriate for analysis of climate niche.
+
+Here we will set up a reasonable bounds for this analysis, using bioclimatic variable 1 (Mean Annual Temperature)
+
+First we can look at the summary of bio1 in the occurrences dataset, using `getBioclimVars`.
+
+```{r}
+bio1occ <- getBioclimVars(occurrences = occurrences, which.biovars=1)
+summary(bio1occ$bio1)
+```
+The minimum Mean Annual Temperature gets is -29 , and the max is 291, so we can use these values to give an idea for the bounds.
+
+NOTE: If using multiple variables, you should use the bounds for the largest number. For example, seasonality:
+
+```{r}
+bio4occ <- getBioclimVars(occurrences = occurrences, which.biovars=4)
+summary(bio4occ$bio4)
+
+```
+PPGM will use the same bounds for all biovariables, so make sure to set bounds accordingly.
+
+Here we will set bounds for the bio1 analysis for a Brownian Motion model.
+
+```{r}
+bmbounds <- list(sigsq = c(min = 0, max = 1000))
+```
+
+### Control
+
+Remember to also set a control. These are the settings used by `fitContinuous` to optimize the model likelihood.
+
+```{r}
+contr <- list(niter=20)
+```
+
+## Run PPGM
+
+### No Fossils
+
+For this first run, we will show a ppgm run with 10 trees and no fossils. To view results in the format of a TraitGram, we use the parameter `plot.TraitGram`.
+
+```{r}
+bio1ppgm <- ppgm(occurrences, trees = vigtrees, bounds = bmbounds, control = contr, which.biovars = 1, model = "BM", plot.TraitGram = TRUE)
+
+```
+This should produce a figure in your working directory called "bio1.pdf".
+
+Let's take a look at this figure.
+
+```{r image-ppgm-nofossils, echo = FALSE, message=FALSE, fig.align='center', fig.cap='Traitgram showing Mean Annual Temperature', out.width="75%", fig.pos='H'}
+knitr::include_graphics("./bio1.pdf")
+```
+
+This is a traitgram for the mean annual temperature variable. The minimum is shown in grey, and the maximum in blue.

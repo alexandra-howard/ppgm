@@ -5,11 +5,11 @@
 \title{ppgm}
 \usage{
 ppgm(occurrences, fossils = FALSE, trees, fossils.edges = FALSE, 
-model = "BM", permut = 1, only.biovars = TRUE, which.biovars = c(1:19), 
-path = "", plot.TraitGram = FALSE, plot.AnimatedMaps = FALSE, 
-plot.GeoRates = FALSE, bounds = list(), control = list(), 
-use.paleoclimate = TRUE, paleoclimateUser = NULL, layerAge=c(0:20), 
-verbose = TRUE)
+model = "BM", ncores = NULL, permut = 1, only.biovars = TRUE, 
+which.biovars = c(1:19), path = "", plot.TraitGram = FALSE, 
+plot.AnimatedMaps = FALSE, plot.GeoRates = FALSE, bounds = list(), 
+control = list(), use.paleoclimate = TRUE, paleoclimateUser = NULL, 
+layerAge=c(0:20), verbose = TRUE)
 }
 \arguments{
 \item{occurrences}{a matrix with three columns of species name, longitude, and latitude, in that order, and rows that are entries for species occurrences. The bioclimate variables can be included for each occurrence in following columns. They must be in order 1 through 19.}
@@ -21,6 +21,8 @@ verbose = TRUE)
 \item{fossils.edges}{a vector of edges that the fossils belong to. Must be in the same order of the fossils argument. If fossils.edges is false, the the function randomly assigns the location of the fossils depending on the age (see details for more information).}
 
 \item{model}{the model of evolution to use to estimate ancestor nodes. Argument is passed onto to function nodeEstimate.}
+
+\item{ncores}{number of cores to run parallel processing on. If left blank, will default to system cores - 1}
 
 \item{permut}{the number of times to randomly place fossils in phylogeny and estimate ancestor states.}
 
@@ -36,7 +38,7 @@ verbose = TRUE)
 
 \item{plot.GeoRates}{logical. Whether to plot GeoRates}
 
-\item{bounds}{parameters for the evolutionary model selected. If none are supplied the default is used}
+\item{bounds}{list of parameters for the evolutionary model selected. If none are supplied the default is used. If multiple biovars are selected, must include separate bounds for each variable.}
 
 \item{control}{settings used for optimisation of model likelihood. Passes to \code{geiger::fitContinuous}}
 
@@ -85,7 +87,7 @@ data(occurrences)
 bounds <- list(sigsq = c(min = 0, max = 1000000))
 \donttest{test_ppgm <- ppgm(occurrences = occurrences,trees = sampletrees, 
 model = "BM", which.biovars = c(1), bounds = bounds, 
-control = list(niter = 20))}
+control = list(niter = 20), ncores=2)}
 }
 \author{
 A. Michelle Lawing, Alexandra F. C. Howard, Maria A. Hurtado-Materon

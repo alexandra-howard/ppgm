@@ -6,6 +6,6 @@ test_that("plotTraitGram-MultiPhylo works", {
   load(test_path("testdata","testfos.rda"))
   load(test_path("testdata","testclim.rda"))
   #test BM
-  tBM  <- ppgm(testocc, trees=testtree, fossils=testfos, model="BM", which.biovars=1, use.paleoclimate=FALSE, paleoclimateUser=testclim)
+  tBM  <- ppgm(testocc, trees=testtree, fossils=testfos, model="BM", which.biovars=1, use.paleoclimate=FALSE, paleoclimateUser=testclim, ncores=2)
   expect_snapshot(plotTraitGramMultiPhylo(tBM$treedata_min,tBM$treedata_max,tBM$node_est,fossils=testfos,which.biovars=1,use.paleoclimate=FALSE,paleoclimateUser = testclim))
 })

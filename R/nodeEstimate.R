@@ -37,11 +37,10 @@
 #' @examples
 #' data(sampletrees)
 #' data(occurrences)
-#' occurrences <- getBioclimVars(occurrences, which.biovars=1)
+#' occurrences <- getBioclimVars(occurrences, which.biovars=4)
 #' sp_data_min<- tapply(occurrences[,4],occurrences$Species,min)
 #' ex <- geiger::treedata(sampletrees[[1]], sp_data_min)
 #' \donttest{nodeEstimate(ex, 1, model = 'OU')} #runs OU model
-
 
 nodeEstimate <- function(treedata.obj, traitnum, model="BM", bounds=list(), control=list(), plot.est=FALSE) {
   x <- treedata.obj$data[,traitnum]
@@ -84,9 +83,9 @@ nodeEstimate <- function(treedata.obj, traitnum, model="BM", bounds=list(), cont
   if(!was.estimated){
     if (model=="BM") {fitted<-BM<-try(geiger::fitContinuous(phy,x,model="BM",bounds=bounds,control=control),silent=T)}
     if (model=="OU") {fitted<-OU<-try(geiger::fitContinuous(phy,x,model="OU",bounds=bounds,control=control),silent=T)
-    if(!methods::is(OU,"try-error")){ if(!is.nan(OU$opt$alpha)){phy=phytools::rescale(phy,model="OU",OU$opt$alpha)}}}
+    if(!methods::is(OU,"try-error")){if(!is.nan(OU$opt$alpha)){phy=phytools::rescale(phy,model="OU",OU$opt$alpha)}}}
     if (model =="EB"){fitted<-EB<-try(geiger::fitContinuous(phy,x,model="EB",bounds=bounds,control=control),silent=T)
-    if(!methods::is(EB,"try-error")){ if(!is.nan(EB$opt$a)){ phy=phytools::rescale(phy,model="EB",EB$opt$a)}}}
+    if(!methods::is(EB,"try-error")){ if(!is.nan(EB$opt$a)){phy=phytools::rescale(phy,model="EB",EB$opt$a)}}}
     if (model=="lambda") {fitted<-lambda<-try(geiger::fitContinuous(phy,x,model="lambda",bounds=bounds,control=control),silent=T)
     if(!methods::is(lambda,"try-error")){if(!is.nan(lambda$opt$lambda)){phy=phytools::rescale(phy,model="lambda",lambda$opt$lambda)}}}
     if(model=="kappa") {fitted<-kappa<-try(geiger::fitContinuous(phy,x,model="kappa",bounds=bounds,control=control),silent=T)
@@ -110,7 +109,7 @@ nodeEstimate <- function(treedata.obj, traitnum, model="BM", bounds=list(), cont
     GrandMean<-J%*%solve(varY)%*%x / J%*%solve(varY)%*%J
     node.est<- varAY%*%solve(varY)%*%(x-c(GrandMean)) + GrandMean[1,1]
   } else {
-    warning("In node.est(): singular matrix: using dist matrix without the rescale, revert to BM")
+    warning("In nodeEstimate(): singular matrix: using dist matrix without the rescale, revert to BM")
     M <- ape::dist.nodes(treedata.obj$phy)
     varAY <- M[-(1:nb.tip), 1:nb.tip]
     varY <- M[1:nb.tip,1:nb.tip]

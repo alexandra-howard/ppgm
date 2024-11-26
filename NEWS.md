@@ -1,3 +1,10 @@
+# ppgm 1.1.0
+
+* Parallel processing added to ppgm in order to reduce processing time when analyzing large tree datasets
+* Added fix to getBioclimVars to assign fossils correct paleoclimate
+* Added vignette for new users
+* 
+
 # ppgm 1.0.3
 
 * Fixed .Rd files for CRAN resubmission
