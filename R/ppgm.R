@@ -1,17 +1,16 @@
 #' @title ppgm
 #' @description ppgm makes a paleophylogeographic species distribution model using the bioclimate envelope method for a specified time period. Currently, models are only available for North America.
 #' @usage ppgm(occurrences, fossils = FALSE, trees, fossils.edges = FALSE, 
-#' model = "BM", ncores = NULL, permut = 1, only.biovars = TRUE, 
+#' model = "BM", permut = 1, only.biovars = TRUE, 
 #' which.biovars = c(1:19), path = "", plot.TraitGram = FALSE, 
 #' plot.AnimatedMaps = FALSE, plot.GeoRates = FALSE, bounds = list(), 
 #' control = list(), use.paleoclimate = TRUE, paleoclimateUser = NULL, 
-#' layerAge=c(0:20), verbose = TRUE)
+#' layerAge=c(0:20), verbose = TRUE, use.parallel = FALSE)
 #' @param occurrences a matrix with three columns of species name, longitude, and latitude, in that order, and rows that are entries for species occurrences. The bioclimate variables can be included for each occurrence in following columns. They must be in order 1 through 19.
 #' @param fossils a matrix with four columns of min age, max age, longitude, and latitude, in that order, and rows that are entries for fossil occurrences. The bioclimate variables can be included for each occurrence in following columns. They must be in order 1 through 19. All 19 variables must be included at this stage, variable selection is done with the argument: "which.biovars".
 #' @param trees phylogenies of species from first column of occurrences argument. Object of class multiphylo.
 #' @param fossils.edges a vector of edges that the fossils belong to. Must be in the same order of the fossils argument. If fossils.edges is false, the the function randomly assigns the location of the fossils depending on the age (see details for more information).
-#' @param model the model of evolution to use to estimate ancestor nodes. Argument is passed onto to function nodeEstimate.
-#' @param ncores number of cores to run parallel processing on. If left blank, will default to system cores - 1 
+#' @param model the model of evolution to use to estimate ancestor nodes. Argument is passed onto to function nodeEstimate. Options are "estimate", "BM", "OU", "EB", "lambda", "kappa", "delta", "rtrend, "mtrend".
 #' @param permut the number of times to randomly place fossils in phylogeny and estimate ancestor states.
 #' @param only.biovars logical. If FALSE, user must include biovariables in occurrence object.
 #' @param which.biovars a vector with the biovars to include in model (see www.worldclim.org for a list of biovars). If "ALL", then all 19 biovars are included in analysis.
@@ -24,7 +23,8 @@
 #' @param use.paleoclimate if left blank, default North America paleoclimate data is used. If FALSE, user submitted paleoclimate must be provided
 #' @param paleoclimateUser list of data frames with paleoclimates, must be dataframes with columns: GlobalID, Longitude, Latitude, bio1, bio2,...,bio19.
 #' @param layerAge vector with the ages of the paleoclimate dataframes, if using user submitted paleoclimate data
-#' @param verbose default true, returns all outputs. If FALSE then returns only climate envelopes and geographic data
+#' @param verbose default TRUE, returns all outputs. If FALSE then returns only climate envelopes and geographic data
+#' @param use.parallel default FALSE, select TRUE to implement parallelisation
 #' @details If the 19 bioclimate variables are not supplied with the occurrences or with the fossils, they will be extracted from the closest 50km point location in the modern or paleoclimate maps that are loaded in with this function. The paleoclimate maps are isotopically scaled between general circulation models (see Lawing and Polly 2011; Rodder et al. 2013) and modern climate (see Hijmans et al. 2005). The fossils paleoclimate data is extracted to the closest million year paleoclimate map. Paleoclimate maps are derived at one million year intervals for the past 20 Ma. The tree (phylogeny) should be dichotomous and the species names should match the names in the first column of the occurrences argument.
 #' @return \code{cem} Estimate of climate envelope for each species in present time. A data frame containing species and min mean and max of biovars specified with \code{which.biovars}.
 #' @return \code{geo_move} data frame of RateGeoCenter and RateGeoSize
@@ -36,6 +36,7 @@
 #' @return \code{model_min} list of trees with minimum fitted model as specified in \code{model}
 #' @return \code{model_max} list of trees with maximum fitted model as specified in \code{model}
 #' @return \code{node_est} list of traits at each node for all trees, min and max for each species. As estimated by nodeEstimate and nodeEstimateEnvelopes
+#' @return \code{richnesscount} list for every tree, list of species richness for each geographic point at each paleoclimate slice
 #' @return \code{aicmin} if model is estimated, table of aic values for minimum trait values for all trees
 #' @return \code{aicmax} if model is estimated, table of aic values for maximum trait values for all trees
 #' @author A. Michelle Lawing, Alexandra F. C. Howard, Maria A. Hurtado-Materon
@@ -54,14 +55,17 @@
 #' bounds <- list(sigsq = c(min = 0, max = 1000000))
 #' \donttest{test_ppgm <- ppgm(occurrences = occurrences,trees = sampletrees, 
 #' model = "BM", which.biovars = c(1), bounds = bounds, 
-#' control = list(niter = 20), ncores=2)}
+#' control = list(niter = 20))}
 
-ppgm <- function(occurrences, fossils = FALSE, trees, fossils.edges = FALSE, model = "BM", ncores = NULL, permut = 1, only.biovars = TRUE,
+ppgm <- function(occurrences, fossils = FALSE, trees, fossils.edges = FALSE, model = "BM", permut = 1, only.biovars = TRUE,
                 which.biovars = c(1:19), path = "", plot.TraitGram = FALSE, plot.AnimatedMaps = FALSE, plot.GeoRates = FALSE,
-                bounds = list(), control = list(), use.paleoclimate = TRUE, paleoclimateUser = NULL, layerAge = c(0:20), verbose = TRUE){
+                bounds = list(), control = list(), use.paleoclimate = TRUE, paleoclimateUser = NULL, layerAge = c(0:20), verbose = TRUE,
+                use.parallel=FALSE){
   if(is(trees,"phylo")){
     stop("ERROR: only one tree supplied. Please use ppgmConsensus")
   }
+  #detect parallel
+  if(isFALSE(use.parallel)){ncores=2}
   #calculate the alpha.trans, which is the transparency for all the trees plotted on top of each other
   alpha.trans <- as.integer(255 / (1 + log(length(trees))))
   #assign rownames to fossils
@@ -105,7 +109,7 @@ ppgm <- function(occurrences, fossils = FALSE, trees, fossils.edges = FALSE, mod
     colnames(treedata_min[[tr]]$data)<-colnames(treedata_max[[tr]]$data)<-paste("bio",which.biovars,sep="")  #labels biovars
   }
   #set up for parallelisation
-  if (is.null(ncores)){ncores <- parallel::detectCores()}
+  if (isTRUE(use.parallel)){ncores <- parallel::detectCores()}
   cl <- parallel::makeCluster(ncores-1)
   doParallel::registerDoParallel(cl)
   parallel::clusterExport(varlist=c("treedata_min","treedata_max","fossils","fossils.edges","model","bounds","control",
@@ -139,6 +143,34 @@ ppgm <- function(occurrences, fossils = FALSE, trees, fossils.edges = FALSE, mod
     time_int<-temp[[tr]]$time_int
   }
   parallel::stopCluster(cl)
+  #save species richness
+  sr_min<-as.list(array(NA,dim=length(trees)))
+  sr_max<-as.list(array(NA,dim=length(trees)))
+  richnesscount<-as.list(array(NA,dim=length(trees)))
+  for(tr in 1:length(trees)){
+    sr_min[[tr]]<-lapply(1:length(paleoclimate),function(i){
+      temp<-lapply(1:length(which.biovars),function(j){getTimeSlice(layerAge[[i]],trees[[tr]],envelope[[tr]][,2,j])})
+      temp<-t(array(unlist(temp),dim=c(length(unlist(temp[[1]]$edge)),2*length(which.biovars))))
+      return(temp)})
+    sr_max[[tr]]<-lapply(1:length(paleoclimate),function(i){
+      temp<-lapply(1:length(which.biovars),function(j){getTimeSlice(layerAge[[i]],trees[[tr]],envelope[[tr]][,5,j])})
+      temp<-t(array(unlist(temp),dim=c(length(unlist(temp[[1]]$edge)),2*length(which.biovars))))
+      return(temp)})
+    for (j in 1:length(paleoclimate)){
+      hld<-array(0,dim=length(paleoclimate[[j]][,1]))
+      if(length(sr_min[[tr]][[j]][1,])==0) next
+      for(i in 1:length(sr_min[[tr]][[j]][1,])){
+        matching <- sapply(1:length(which.biovars),function(x){
+          paleoclimate[[j]][,which.biovars[x]+3]>sr_min[[tr]][[j]][1:length(which.biovars)*2,i][x] & 
+            paleoclimate[[j]][,which.biovars[x]+3]<sr_max[[tr]][[j]][1:length(which.biovars)*2,i][x]
+        })
+        matching<-which(rowSums(matching)==length(which.biovars),arr.ind=TRUE)
+        hld[matching]<-hld[matching]+1
+      }
+      hld[which(hld==0,arr.ind=TRUE)]=NA
+    }
+    richnesscount[[tr]] <- hld
+  }
   #plot permutations
   if(plot.TraitGram){
     plotTraitGramMultiPhylo(treedata_min, treedata_max, node_est, fossils=fossils, which.biovars=which.biovars, path=path, paleoclimateUser=paleoclimateUser, use.paleoclimate=use.paleoclimate, layerAge=layerAge)
@@ -175,7 +207,11 @@ ppgm <- function(occurrences, fossils = FALSE, trees, fossils.edges = FALSE, mod
   print_table_max <- list()
   AICcmin <- AICcmax <- list()
   if(model=="estimate"){
-    models <- c("BM", "OU", "EB", "lambda", "kappa", "delta")
+    if(!ape::is.ultrametric(trees[[1]])){
+      models <- c("BM", "OU", "EB", "lambda", "kappa", "delta", "mtrend","rtrend")
+    } else {
+      models <-c("BM", "OU", "EB", "lambda", "kappa", "delta")
+    }
     for(traits in 1:length(model_min[[1]][[1]])){
       clean<-list()
       for(trees in 1:length(model_min)){
@@ -204,6 +240,7 @@ ppgm <- function(occurrences, fossils = FALSE, trees, fossils.edges = FALSE, mod
                 treedata_min=treedata_min,
                 treedata_max=treedata_max,
                 node_est=node_est,
+                richnesscount=richnesscount,
                 AICcmin=AICcmin,
                 AICcmax=AICcmax))
   }  else{
