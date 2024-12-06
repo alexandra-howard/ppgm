@@ -4,7 +4,7 @@
 * Added fix to getBioclimVars to assign fossils correct paleoclimate
 * Added vignette for new users
 * Added labelling to plotAnimatedPPGM and plotAnimatedPPGMMultiPhylo for each time slice
-* Changed gif saving from saveGIF (which requires imageMagick) to save_gif (works with base R)
+* Changed gif saving in AnimatedPPGM functions from saveGIF (which requires imageMagick) to save_gif (works with base R)
 * Corrected details of getLineageClimate function
 * Added evolutionary models to ppgm and ppgmConsensus (mtrend - mean_trend from fitContinuous; rtrend - rate_trend from fitContinuous)
 
