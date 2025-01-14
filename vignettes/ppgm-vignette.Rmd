@@ -113,18 +113,18 @@ summary(bio4occ$bio4)
 
 PPGM will use the same bounds for all biovariables, so make sure to set bounds accordingly.
 
-Here we will set bounds for the bio1 analysis for a Brownian Motion model.
+Here we will set bounds for the bio1 and bio4 analysis for a Brownian Motion model.
 
 ```{r set BM bounds}
 # Set bounds for Brownian Motion
-bmbounds <- list(sigsq = c(min = 0, max = 1000))
+bmbounds <- list(sigsq = c(min = 0, max = 10000))
 ```
 
 And set bounds for the bio1 analysis for an Ornstein-Uhlenbeck model.
 
 ```{r set OU bounds}
 # Set bounds for OU
-oubounds <- list(sigsq = c(min = 0, max = 1000),alpha = c(min = 0, max = 1000))
+oubounds <- list(sigsq = c(min = 0, max = 1000000),alpha = c(min = 0, max = 100000))
 ```
 
 ### Control
@@ -146,44 +146,58 @@ For this first run, we will show a ppgm run with 10 trees and no fossils.
 
 We will use our previously made objects, `occurrences` and `vigtrees`.
 
-To select biovariable 1 we use `which.biovars = 1`.
+To select biovariables 1 and 4 we use `which.biovars = c(1,4)`.
 
 To select the Brownian Motion model we use `model = "BM"`.
 
-To view results in the format of a TraitGram, we use the parameter `plot.TraitGram`.
+To view results in the format of a TraitGram, we use the parameter `plot.TraitGram` and set it to `TRUE`.
 
-To change the default name of the output (which defaults to bio[#]), we use `path = "BM"`.
+To change the default name of the output (which defaults to bio[#]), we use `path = "BM"`. This will add the characters "BM" to the start of every plot name produced by the PPGM.
+
+To speed up processing time when using multiple phylogenies, you can add the parameter `use.parallel = TRUE`. This will detect the number of cores on the current machine and run the node estimation process on multiple cores.
 
 ```{r run ppgm 1 BM no fossils}
-bio1ppgm_bm <- ppgm(occurrences, trees = vigtrees, bounds = bmbounds, control = contr, 
-                    which.biovars = 1, model = "BM", plot.TraitGram = TRUE, path = "BM")
+ppgm_bm <- ppgm(occurrences, trees = vigtrees, bounds = bmbounds, control = contr, 
+                    which.biovars = c(1,4), model = "BM", plot.TraitGram = TRUE, path = "BM")
 
 ```
 
-This should produce a figure in your working directory called "BMbio1.pdf".
+This should produce a figure in your working directory called "BMbio1.pdf" and "BMbio4.pdf".
 
-Let's take a look at this figure.
+Let's take a look at the traitgram for mean annual temperature (bio 1).
 
-```{r image-ppgm-nofossils-bm, echo = FALSE, message=FALSE, fig.align='center', fig.cap='Traitgram showing Mean Annual Temperature', out.width="75%", fig.pos='H'}
+```{r image-ppgm-nofossils-bm-bio1, echo = FALSE, message=FALSE, fig.align='center', fig.cap='Traitgram showing Mean Annual Temperature', out.width="75%", fig.pos='H'}
 knitr::include_graphics("./BMbio1.pdf")
 ```
 
 This is a traitgram for the mean annual temperature variable. The minimum is shown in grey, and the maximum in blue.
 
+Below is the traitgram for temperature seasonality.
+
+```{r image-ppgm-nofossils-bm-bio4, echo = FALSE, message=FALSE, fig.align='center', fig.cap='Traitgram showing Temperature Seasonality', out.width="75%", fig.pos='H'}
+knitr::include_graphics("./BMbio4.pdf")
+```
+
 ### Many Trees - No Fossils - Ornstein Uhlenbeck
 
 Let's have a look at the outputs from another commonly used model, OU.
 
-Remember that this model uses different bounds
+Remember that this model uses different bounds.
 
 ```{r run ppgm 2 OU no fossils}
-bio1ppgm_ou <- ppgm(occurrences, trees = vigtrees, bounds = oubounds, control = contr, 
-                    which.biovars = 1, model = "OU", plot.TraitGram = TRUE, path = "OU")
+ppgm_ou <- ppgm(occurrences, trees = vigtrees, bounds = oubounds, control = contr, 
+                    which.biovars = c(1,4), model = "OU", plot.TraitGram = TRUE, path = "OU")
 
 ```
 
-```{r image-ppgm-nofossils-OU, echo = FALSE, message=FALSE, fig.align='center', fig.cap='Traitgram showing Mean Annual Temperature', out.width="75%", fig.pos='H'}
+You can also examine how the reconstructed climate for each node differs from the Brownian Motion in the traitgram.
+
+```{r image-ppgm-nofossils-OU-bio1, echo = FALSE, message=FALSE, fig.align='center', fig.cap='Traitgram showing Mean Annual Temperature', out.width="75%", fig.pos='H'}
 knitr::include_graphics("./OUbio1.pdf")
+```
+
+```{r image-ppgm-nofossils-OU-bio4, echo = FALSE, message=FALSE, fig.align='center', fig.cap='Traitgram showing Temperature Seasonality', out.width="75%", fig.pos='H'}
+knitr::include_graphics("./OUbio4.pdf")
 ```
 
 ### PPGM results
@@ -192,26 +206,98 @@ The `ppgm` function produces a list of outputs that can be used separately with 
 
 #### Climate Envelope
 
+The climate envelope for each species is stored in `cem`. This contains the minimum, mean, and max, for the biovariable used in the ppgm workflow. As we have included two variables (bio1 and bio4), we have 6 columns.
+
 ```{r climate envelope output}
-head(bio1ppgm_bm$cem)
-```
-
-The climate envelope for each species is stored in `cem`. This contains the minimum, mean, and max, for the biovariable used in the ppgm workflow. As we only included one biovariable (bio1), we have 3 columns
-
-```{r climate envelope output2}
-head(bio1ppgm_bm$envelope[[1]])
+head(ppgm_bm$cem)
 ```
 
 The output `envelope` is a list (of however many trees) containing the climate envelope of each node of the tree. This is used downstream in the function `getLineageClimate` and is the equivalent to the output of the function `getEnvelopes`.
 
-#### Treedata
+```{r climate envelope output2}
+head(ppgm_bm$envelope[[1]])
+```
+
+#### Treedata Objects
+
+The outputs `treedata_min` and `treedata_max` contain the minimum values and maximum climatic variables for every tree.
+
+Here we can take a look at the data that is in the first tree:
 
 ```{r}
-#head(bio1ppgm_bm$treedata_min[[1]])
+head(ppgm_bm$treedata_min[[1]]$data)
 ```
+
+If you didn't plot a traitgram during the initial run of the PPGM, these outputs can be used in the functions `plotTraitGram` (for a single phylogeny) or `plotTraitGramMultiPhylo` (for many phylogenies).
 
 ### Viewing climate envelope occupancy geographically - MESS
 
-The traitgram results show how these individual bioclimatic variables change through time. To see how these relate to geographic space, we need to use MESS
+The traitgram results show how these individual bioclimatic variables change through time. To see how these relate to geographic space, we can create a MESS map.
 
 MESS, multivariate environmental suitability surfaces
+
+To put the output of ppgm in the correct format, we need to extract the minimum and maximum climate envelope from the `cem` object. We need columns 1 and 2 for minimum, and 4 and 6 for the maximum. We also need to make sure that the row names from the `cem` output are retained.
+
+```{r format output for ppgmMESS}
+cem_min <- cbind(ppgm_bm$cem[,1], ppgm_bm$cem[,2])
+cem_max <- cbind(ppgm_bm$cem[,5], ppgm_bm$cem[,6])
+rownames(cem_min) <- rownames(cem_max) <- rownames(ppgm_bm$cem)
+```
+
+Now we can calculate the MESS scores and create the MESS map. We select the option `which.plot="mess"` to select the MESS map.
+
+```{r run ppgmMESS}
+mess <- ppgmMESS(cem_min,cem_max,ppgm_bm$node_est,tree=vigtrees,timeslice=15, which.biovars=c(1,4),which.plot="mess")
+```
+
+This will produce a plot in the working directory for the timeslices selected using the option `timeslice`. As we selected timeslice 15 (representing 15 mya), we get a plot of the reconstructed climate niche availability at 15 mya for the entire clade, output as a plot called "MESS15Multi.pdf".
+
+```{r image-ppgm-15mess, echo = FALSE, message=FALSE, fig.align='center', fig.cap='Traitgram showing Temperature Seasonality', out.width="75%", fig.pos='H'}
+knitr::include_graphics("./MESS15multi.pdf")
+```
+
+
+## A PPGM with Fossils
+
+A PPGM can be run with fossils, and we recommend running a PPGM with and without fossils to see what the effect of fossil inclusion can have on the reconstruction of climate niche tolerances through time. The set up for the PPGM is the same as with the extant PPGM, only now we will use our dataset of fossils.
+
+Here we'll select the first 6 fossil occurrences, to show how only a few fossils can have a really interesting effect on results
+
+```{r}
+vigfossils <- head(scel_fossils)
+```
+This dataset includes 45 fossil *Sceloporus* occurrences ranging from early Miocene to late Pleistocene that are identified to genus level, but species identification is not possible.
+
+One of the good things about PPGM is that we can include these fossils even though their taxonomic position is unknown. When fossils with unknown phylogenetic placement are included in the `ppgm`, the workflow utilises the function `addFossil` to randomly add fossils to appropriate branches that are present in the phylogeny within the age range of the fossil as given.
+
+Here we will run a ppgm with the same variables as the previous models to see the changes that happen when fossils are included.
+
+As the fossils are being added to the tree randomly, we can account for the uncertainty in node placement introduced by alternate fossil positions by increasing the number of permutations. Here we'll set the number of permutations to 5 using `permut = 5`, however you can experiment with your own data to see how many permutations are necessary to include the range of uncertainty in node estimation.
+
+Increasing the number of permutations will increase the computational time, so be aware that this step could take some time depending on your personal machine.
+
+```{r ppgm run with fossils}
+ppgm_bmfossil <- ppgm(occurrences, trees = vigtrees, fossils = vigfossils, bounds = bmbounds,
+                      control = contr, which.biovars = c(1,4), model = "BM", plot.TraitGram = TRUE,
+                      path = "BMfossil", permut = 5)
+```
+
+We can compare the results with the extant only ppgm
+
+Also create a MESS map.
+
+```{r format fossil output for ppgmMESS}
+cem_min <- cbind(ppgm_bmfossil$cem[,1], ppgm_bmfossil$cem[,2])
+cem_max <- cbind(ppgm_bmfossil$cem[,5], ppgm_bmfossil$cem[,6])
+rownames(cem_min) <- rownames(cem_max) <- rownames(ppgm_bmfossil$cem)
+```
+
+
+```{r run fossil ppgmMESS}
+mess_fossil <- ppgmMESS(cem_min, cem_max, ppgm_bmfossil$node_est, tree=vigtrees, timeslice=15,
+                        which.biovars = c(1,4), which.plot = "mess", fossils = scel_fossils,
+                        path = "fossil")
+```
+
+
+As you can see the MESS map using fossils is very different, suggesting climatic tolerances for *Sceloporus* much more north than using extant occurrences alone.

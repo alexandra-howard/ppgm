@@ -19,7 +19,7 @@ Description: Reconstruction of paleoclimate niches using phylogenetic comparativ
     Rivera et al (2020) <doi:10.1111/jbi.13915> "Reconstructing historical shifts 
     in suitable habitat of Sceloporus lineages using phylogenetic niche modelling.".
 Imports: ape, fields, geiger, gifski, methods, phangorn, phytools, stringi, parallel, doParallel, foreach
-Depends: R (>= 4.3.0), R (>= 2.10), sp, sf
+Depends: R (>= 4.4.0), R (>= 2.10), sp, sf
 License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
