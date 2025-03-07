@@ -156,6 +156,7 @@ ppgm <- function(occurrences, fossils = FALSE, trees, fossils.edges = FALSE, mod
       temp<-lapply(1:length(which.biovars),function(j){getTimeSlice(layerAge[[i]],trees[[tr]],envelope[[tr]][,5,j])})
       temp<-t(array(unlist(temp),dim=c(length(unlist(temp[[1]]$edge)),2*length(which.biovars))))
       return(temp)})
+    match <- as.list(array(NA,dim=length(paleoclimate)))
     for (j in 1:length(paleoclimate)){
       hld<-array(0,dim=length(paleoclimate[[j]][,1]))
       if(length(sr_min[[tr]][[j]][1,])==0) next
@@ -168,8 +169,9 @@ ppgm <- function(occurrences, fossils = FALSE, trees, fossils.edges = FALSE, mod
         hld[matching]<-hld[matching]+1
       }
       hld[which(hld==0,arr.ind=TRUE)]=NA
+      match[[j]] <- hld
     }
-    richnesscount[[tr]] <- hld
+    richnesscount[[tr]] <- match
   }
   #plot permutations
   if(plot.TraitGram){
