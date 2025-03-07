@@ -12,7 +12,6 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-devtools::install_github("alexandra-howard/ppgm@ppgm1.1")
 ```
 
 ```{r setup}
@@ -159,16 +158,16 @@ To speed up processing time when using multiple phylogenies, you can add the par
 
 ```{r run ppgm 1 BM no fossils}
 ppgm_bm <- ppgm(occurrences, trees = vigtrees, bounds = bmbounds, control = contr, 
-                    which.biovars = c(1,4), model = "BM", plot.TraitGram = TRUE, path = "BM")
+                    which.biovars = c(1,4), model = "BM",  path = "BM")
 
 ```
 
-This should produce a figure in your working directory called "BMbio1.pdf" and "BMbio4.pdf".
+If you add the argument plot.TraitGram = TRUE, you will get a figure in your working directory called "BMbio1.pdf" and "BMbio4.pdf".
 
 Let's take a look at the traitgram for mean annual temperature (bio 1).
 
 ```{r image-ppgm-nofossils-bm-bio1, echo = FALSE, message=FALSE, fig.align='center', fig.cap='Traitgram showing Mean Annual Temperature', out.width="75%", fig.pos='H'}
-knitr::include_graphics("./BMbio1.pdf")
+knitr::include_graphics("images/BMbio1.jpg")
 ```
 
 This is a traitgram for the mean annual temperature variable. The minimum is shown in grey, and the maximum in blue.
@@ -176,7 +175,7 @@ This is a traitgram for the mean annual temperature variable. The minimum is sho
 Below is the traitgram for temperature seasonality.
 
 ```{r image-ppgm-nofossils-bm-bio4, echo = FALSE, message=FALSE, fig.align='center', fig.cap='Traitgram showing Temperature Seasonality', out.width="75%", fig.pos='H'}
-knitr::include_graphics("./BMbio4.pdf")
+knitr::include_graphics("images/BMbio4.jpg")
 ```
 
 ### Many Trees - No Fossils - Ornstein Uhlenbeck
@@ -187,18 +186,18 @@ Remember that this model uses different bounds.
 
 ```{r run ppgm 2 OU no fossils}
 ppgm_ou <- ppgm(occurrences, trees = vigtrees, bounds = oubounds, control = contr, 
-                    which.biovars = c(1,4), model = "OU", plot.TraitGram = TRUE, path = "OU")
+                    which.biovars = c(1,4), model = "OU", path = "OU")
 
 ```
 
 You can also examine how the reconstructed climate for each node differs from the Brownian Motion in the traitgram.
 
 ```{r image-ppgm-nofossils-OU-bio1, echo = FALSE, message=FALSE, fig.align='center', fig.cap='Traitgram showing Mean Annual Temperature', out.width="75%", fig.pos='H'}
-knitr::include_graphics("./OUbio1.pdf")
+knitr::include_graphics("images/OUbio1.jpg")
 ```
 
 ```{r image-ppgm-nofossils-OU-bio4, echo = FALSE, message=FALSE, fig.align='center', fig.cap='Traitgram showing Temperature Seasonality', out.width="75%", fig.pos='H'}
-knitr::include_graphics("./OUbio4.pdf")
+knitr::include_graphics("images/OUbio4.jpg")
 ```
 
 ### PPGM results
@@ -248,13 +247,14 @@ rownames(cem_min) <- rownames(cem_max) <- rownames(ppgm_bm$cem)
 Now we can calculate the MESS scores and create the MESS map. We select the option `which.plot="mess"` to select the MESS map.
 
 ```{r run ppgmMESS}
-mess <- ppgmMESS(cem_min,cem_max,ppgm_bm$node_est,tree=vigtrees,timeslice=15, which.biovars=c(1,4),which.plot="mess")
+mess <- ppgmMESS(cem_min, cem_max, ppgm_bm$node_est, tree = vigtrees, timeslice = 15,
+                 which.biovars = c(1,4), which.plot = "none")
 ```
 
 This will produce a plot in the working directory for the timeslices selected using the option `timeslice`. As we selected timeslice 15 (representing 15 mya), we get a plot of the reconstructed climate niche availability at 15 mya for the entire clade, output as a plot called "MESS15Multi.pdf".
 
 ```{r image-ppgm-15mess, echo = FALSE, message=FALSE, fig.align='center', fig.cap='MESS at 15mya', out.width="75%", fig.pos='H'}
-knitr::include_graphics("./MESS15multi.pdf")
+knitr::include_graphics("images/MESS15multi.jpg")
 ```
 
 
@@ -279,16 +279,16 @@ Increasing the number of permutations will increase the computational time, so b
 
 ```{r ppgm run with fossils}
 ppgm_bmfossil <- ppgm(occurrences, trees = vigtrees, fossils = vigfossils, bounds = bmbounds,
-                      control = contr, which.biovars = c(1,4), model = "BM", plot.TraitGram = TRUE,
+                      control = contr, which.biovars = c(1,4), model = "BM",
                       path = "BMfossil", permut = 5)
 ```
 We can compare the results with the extant only ppgm
 
 ```{r image-ppgm-nofossils-bm-bio1-again, echo = FALSE, message=FALSE, fig.align='center', fig.cap='Traitgram without fossils showing Mean Annual Temperature', out.width="75%", fig.pos='H'}
-knitr::include_graphics("./BMbio1.pdf")
+knitr::include_graphics("images/BMbio1.jpg")
 ```
 ```{r image-ppgm-fossils-bm-bio1, echo = FALSE, message=FALSE, fig.align='center', fig.cap='Traitgram with fossils showing Mean Annual Temperature', out.width="75%", fig.pos='H'}
-knitr::include_graphics("./BMfossilbio1.pdf")
+knitr::include_graphics("images/BMfossilbio1.jpg")
 ```
 Even with the addition of only 6 fossils, the traitgram shows that the model reconstructs a different ancestral state for the climate tolerance of the Sceloporus total clade.
 
@@ -301,20 +301,21 @@ fcem_min <- cbind(ppgm_bmfossil$cem[,1], ppgm_bmfossil$cem[,2])
 fcem_max <- cbind(ppgm_bmfossil$cem[,5], ppgm_bmfossil$cem[,6])
 rownames(fcem_min) <- rownames(fcem_max) <- rownames(ppgm_bmfossil$cem)
 ```
-Run the MESS analysis
+Run the MESS analysis for the fossil ppgm. Change the below code to say `which.plot = "all"`.
 
 ```{r run fossil ppgmMESS}
 mess_fossil <- ppgmMESS(fcem_min, fcem_max, ppgm_bmfossil$node_est, tree=vigtrees, timeslice=15,
-                        which.biovars = c(1,4), which.plot = "mess", fossils = vigfossils,
+                        which.biovars = c(1,4), which.plot = "none", fossils = vigfossils,
                         path = "fossil")
 ```
 
 
 ```{r image-ppgm-15mess-nofossils, echo = FALSE, message=FALSE, fig.align='center', fig.cap='MESS at 15mya, no fossils', out.width="75%", fig.pos='H'}
-knitr::include_graphics("./MESS15multi.pdf")
+knitr::include_graphics("images/MESS15multi.jpg")
 ```
 ```{r image-ppgm-15mess-fossils, echo = FALSE, message=FALSE, fig.align='center', fig.cap='MESS at 15mya, fossils', out.width="75%", fig.pos='H'}
-knitr::include_graphics("./fossilMESS15multi.pdf")
+knitr::include_graphics("images/fossilMESS15multi.jpg")
 ```
 
-As you can see the MESS map using fossils is very different, suggesting climatic tolerances for *Sceloporus* much more north than using extant occurrences alone.
+As you can see the MESS map using fossils is very different, suggesting climatic tolerances for *Sceloporus* much more North than using extant occurrences alone. This changes our understanding of where suitable climate for *Sceloporus* was during their early evolutionary history.
+
