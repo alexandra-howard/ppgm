@@ -9,6 +9,7 @@
 * Added evolutionary models to ppgm and ppgmConsensus (mtrend - mean_trend from fitContinuous; rtrend - rate_trend from fitContinuous)
 * Added fix in addFossil if fossil age is exactly between two paleoclimate ages - will select earlier age
 * Made sure fossils plot in MESS maps
+* Updated output of richnesscount in ppgm function to give all time periods
 
 # ppgm 1.0.3
 
